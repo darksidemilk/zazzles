@@ -83,7 +83,16 @@ namespace Zazzles.Middleware
             {
                 var adapters = NetworkInterface.GetAllNetworkInterfaces();
 
-                macs = adapters.Aggregate(macs, (current, adapter) =>
+                //filter to only ethernet and wifi adapter types that aren't bluetooth or virtual adapters
+                //wanted to filter with the MSFT_NetworkAdapter ciminstance property of connectorPresent but that won't be universal to all OS and couldn't get it to come up
+                //there are probably other strings to filter here
+                //maybe an even better approach would be to have entries on the server for adapter descriptions to filter out of all client macs and have this pull from that list.
+                var physicalAdapters =
+                    from adapter in adapters
+                    where ((adapter.NetworkInterfaceType == NetworkInterfaceType.Ethernet || adapter.NetworkInterfaceType == NetworkInterfaceType.Wireless80211) && ((!adapter.Description.Contains("Microsoft Wi-Fi Direct Virtual Adapter"))) && ((!adapter.Description.Contains("VMware Virtual Ethernet Adapter for VMnet"))) && ((!adapter.Description.Contains("Bluetooth"))) && (adapter.Supports(NetworkInterfaceComponent.IPv4) == true))
+                    select adapter;
+
+                macs = physicalAdapters.Aggregate(macs, (current, adapter) =>
                     current +
                     ("|" +
                      string.Join(":",
